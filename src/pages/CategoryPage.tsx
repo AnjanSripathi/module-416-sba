@@ -10,14 +10,16 @@ function CategoryPage(){
             <h2>Category Page = {slug}</h2>
             {loading && <p>Loading...</p>}
             {error && <p>Error: {error}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
             {items && items.meals.map((item) => (
-                <div className="grid grid-cols-3 gap-6" key={item.idMeal} >
+                <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow" key={item.idMeal} >
                     <Link to = {`/recipes/${item.idMeal}`}>
-                        <h3>{item.strMeal}</h3>
-                        <img src={item.strMealThumb} alt={item.strMeal} />
+                        <h3 className="text-xl font-bold p-4">{item.strMeal}</h3>
+                        <img className="w-full h-48 object-cover" src={item.strMealThumb} alt={item.strMeal} />
                     </Link>
                 </div>
             ))}
+            </div>
         </div>
     )
 }
