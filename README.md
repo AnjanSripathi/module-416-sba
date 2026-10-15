@@ -1,47 +1,83 @@
 # SBA Recipe Explorer
 
-A React + TypeScript application for discovering, searching, and saving meals from the TheMealDB API. The app allows users to browse categories, view recipe details, and keep a personal list of favorite dishes.
+A React + TypeScript app for browsing meals, searching by name, viewing recipe details, and saving favorite dishes. The project is built around TheMealDB API and focuses on React Router, fetch logic, and shared state management.
 
 ## Overview
 
-This project is a recipe discovery app built with Vite and React Router. It provides a simple, responsive interface for exploring meal categories and searching for recipes by name. Each recipe page displays ingredients and step-by-step cooking instructions, and users can add or remove meals from a favorites list.
+This application acts like a lightweight recipe browser. Users can explore categories of meals, search for specific dishes, open individual recipe details, and keep a list of favorite recipes that remains available between page refreshes.
+
+## Features
+
+### 1. Browse categories
+The homepage fetches a list of meal categories from TheMealDB and shows each category as a card. Each card links to a category page where recipes in that group are displayed.
+
+### 2. Search for meals by name
+The Search page includes a text field and search button. When the user enters a meal name, the app requests results from the TheMealDB search endpoint and renders the matching meals as cards.
+
+### 3. View detailed recipe information
+When a recipe is opened, the app loads the full recipe details, including:
+- recipe title
+- image
+- ingredients and measures
+- cooking instructions
+- add/remove favorite action
+
+### 4. Favorites page
+Users can save recipe cards to a dedicated Favorites page. This page reads from the shared favorites list and displays saved meals in a gallery layout.
+
+### 5. Persistent favorites using localStorage
+This is the key technical feature of the app. The favorites list is stored in the browser with `localStorage`, meaning it remains available after a refresh and does not disappear immediately when navigation changes.
+
+### 6. Responsive layout
+The UI is designed to work on desktop and mobile screens using responsive Tailwind classes.
 
 ## How the project works
 
-The app is a single-page recipe browser built around a simple data flow:
+The app follows a simple front-end flow:
 
-1. The user lands on the homepage and the app fetches a list of recipe categories from TheMealDB.
-2. Each category card links to a category page, where the app fetches meals belonging to that category.
-3. Clicking a meal opens a details page that loads the full recipe, including ingredients and cooking steps.
-4. The user can click the favorite button on the detail page to save that meal to a shared favorites list.
-5. The Favorites page reads from the same shared list and renders a gallery of saved foods.
+1. The homepage fetches categories from TheMealDB.
+2. The user selects a category or searches for a meal by name.
+3. The app fetches recipe data based on the selected category or query.
+4. Clicking a recipe opens a detail view with full recipe content.
+5. The user can add or remove the recipe from favorites.
+6. The Favorites page reads the same favorites state and displays all saved meals.
 
-This gives the user a seamless browsing experience without navigating away from the app or re-fetching data unnecessarily.
+This structure demonstrates how a React app can combine API fetching, route-based navigation, and a shared state layer.
 
-## Favorites context explained
+## Favorites: how it works in detail
 
-The most important state in this project is the favorites list. It is managed through a React context rather than a local component state so it can be shared across pages.
+The most important functionality in this project is the favorites system.
 
-### Flow of the favorites functionality
+### Why it is stored in context
 
-- `src/context/FavoriteContext.tsx` defines the data shape and the context API.
-- `src/provider/FavoriteProvider.tsx` creates the actual provider that stores the current favorites list.
-- `useLocalStorage` is used inside the provider so the favorites are saved in the browser's local storage.
-- `main.tsx` wraps the entire app in `FavoritesProvider`, making the favorites state available anywhere in the app.
+Favorites need to be shared between different pages. The recipe detail page adds a recipe, and the Favorites page displays it. If this state lived only inside one component, it would not be available everywhere in the app.
 
-The context exposes two main actions:
+The app solves this by using React Context:
 
-- `addFavorite(recipe)` — adds a recipe to the favorites array
-- `removeFavorite(id)` — removes a recipe by its Meal ID
+- `src/context/FavoriteContext.tsx` defines the favorites value and the `addFavorite` / `removeFavorite` functions
+- `src/provider/FavoriteProvider.tsx` provides the actual favorites state to the rest of the app
+- `src/main.tsx` wraps the whole app in the provider so all pages can access it
 
-A custom hook keeps the favorites array synchronized with `localStorage`, so when the user refreshes the page, their saved meals remain in the app.
+### Why localStorage is important
 
-### Example behavior
+The favorites are also persisted in the browser using `localStorage` through the custom hook in `src/hooks/useLocalStorage.ts`.
 
-When a user opens a recipe and clicks `Add to Favorites`:
+This means:
+- the list survives a page refresh
+- the saved recipes remain visible when the user comes back later
+- the app does not need a backend database to keep the favorites available on the client side
+
+### What this means technically
+
+This is an example of a client-side persistence pattern. It is simple and suitable for a front-end demo, but it is not a production-level multi-user data store because:
+- it is only saved in the browser
+- it is not shared across devices
+- it is not secured or synced with a server
+
+### Example of favorite behavior
 
 ```tsx
-const { favorites, addFavorite } = useContext(FavoritesContext);
+const { addFavorite } = useContext(FavoritesContext);
 
 addFavorite({
   idMeal: meal.idMeal,
@@ -50,17 +86,7 @@ addFavorite({
 });
 ```
 
-This updates the shared favorites list, and the Favorites page automatically re-renders to display the new item.
-
-## Features
-
-- Browse popular food categories from TheMealDB
-- Search for meals by keyword
-- View detailed recipe information including ingredients and instructions
-- Add favorite meals to a dedicated favorites page
-- Remove favorites from the recipe detail screen
-- Favorites persist in local browser storage
-- Responsive layout for desktop and mobile devices
+This adds the selected recipe to the favorites array, and because the array is stored in context, the Favorites page updates immediately. Because it is also saved in `localStorage`, the data remains after the page reloads.
 
 ## Tech Stack
 
@@ -80,6 +106,7 @@ sba/
 │   ├── App.tsx
 │   ├── main.tsx
 │   ├── context/
+│   ├── hooks/
 │   ├── pages/
 │   ├── provider/
 │   ├── assets/
@@ -93,17 +120,26 @@ sba/
 
 Key areas:
 
-- `src/App.tsx` – main routing configuration
-- `src/pages/` – page components for Home, Search, Favorites, and recipe details
-- `src/context/` – favorite state and shared data models
-- `src/provider/` – context providers used by the app
+- `src/pages/` – Home, Search, Category, Recipe, and Favorites pages
+- `src/context/` – shared favorites context and type definitions
+- `src/provider/` – provider components that pass state to the app
+- `src/hooks/` – custom hooks such as `useLocalStorage`
+
+## API Integration
+
+The app calls the following public endpoints from TheMealDB:
+
+- Categories: `https://www.themealdb.com/api/json/v1/1/categories.php`
+- Search by meal name: `https://www.themealdb.com/api/json/v1/1/search.php?s={query}`
+- Filter by category: `https://www.themealdb.com/api/json/v1/1/filter.php?c={category}`
+- Recipe lookup by ID: `https://www.themealdb.com/api/json/v1/1/lookup.php?i={id}`
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- npm
 
 ### Installation
 
@@ -117,7 +153,7 @@ npm install
 npm run dev
 ```
 
-Then open the local URL shown in the terminal, usually:
+Then open the local URL displayed in the terminal, usually:
 
 ```text
 http://localhost:5173
@@ -129,7 +165,7 @@ http://localhost:5173
 npm run build
 ```
 
-To preview the production build:
+### Preview the build
 
 ```bash
 npm run preview
@@ -138,35 +174,29 @@ npm run preview
 ## Available Scripts
 
 ```bash
-npm run dev     # Start the Vite development server
-npm run build   # Create a production build
-npm run lint    # Run ESLint checks
-npm run preview # Preview the production build locally
+npm run dev
+npm run build
+npm run lint
+npm run preview
 ```
-
-## API Integration
-
-The app uses the public TheMealDB API:
-
-- Categories: `https://www.themealdb.com/api/json/v1/1/categories.php`
-- Search: `https://www.themealdb.com/api/json/v1/1/search.php?s={query}`
-- By category: `https://www.themealdb.com/api/json/v1/1/filter.php?c={category}`
-- Recipe details: `https://www.themealdb.com/api/json/v1/1/lookup.php?i={id}`
 
 ## Usage
 
-1. Open the homepage to browse meal categories.
-2. Click a category or use the search page to find a recipe.
-3. Open a recipe to read ingredients and instructions.
-4. Use the favorite button to save recipes.
-5. Visit the Favorites page to view saved dishes.
+1. Open the homepage and browse meal categories.
+2. Use the Search page to look up a recipe by name.
+3. Click a recipe card to open the details page.
+4. Add or remove the recipe from favorites.
+5. Open the Favorites page to see saved recipes.
 
 ## Notes
 
-- Favorites are managed in React state and are not persisted to a backend database.
-- This project is a front-end demo and is designed to showcase React routing, data fetching, and context-based state management.
+- This is a front-end demo project, not a full production recipe backend.
+- Favorites are browser-persistent but local to that device/browser.
+- The app currently supports search by meal name rather than ingredient filters.
 
 ## License
 
-This project is for educational and demonstration purposes.
+This project is intended for educational and demonstration purposes.
+
+
 
